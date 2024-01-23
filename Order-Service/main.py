@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from redis_om import get_redis_connection, HashModel
 import os
 from starlette.requests import Request
+from fastapi.background import BackgroundTasks
 import requests
 from starlette.middleware.cors import CORSMiddleware
 from get_temperatures_by_id import temperatures_from_dict
@@ -58,8 +59,12 @@ def get(pk: str):
 def get():
     return Order.all_pks()
 
+
+
+
+
 @app.post('/orders')
-async def create(request: Request,):  # id, quantity
+async def create(request: Request,background_tasks: BackgroundTasks):  # id, quantity
     body = await request.json()
 
     req = requests.get('http://localhost:8000/products/%s' % body['id'])
@@ -74,8 +79,8 @@ async def create(request: Request,):  # id, quantity
                 quantity=body['quantity'],
                 status='pending'
             )
-            order_completed(order)
             order.save()
+            background_tasks.add_task(order_completed, order)
             return order
 
     else:
